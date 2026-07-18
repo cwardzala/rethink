@@ -71,11 +71,22 @@ export default class Device extends AABBDevice {
                         device_class: 'door',
                         unique_id: '$deviceid-door',
                         state_topic: '$this/door',
-                        name: 'Door',
+                        name: 'Fridge Door',
+                    },
+                    freezer_door: {
+                        platform: 'binary_sensor',
+                        device_class: 'door',
+                        unique_id: '$deviceid-freezer_door',
+                        state_topic: '$this/freezer_door',
+                        name: 'Freezer Door',
                     },
                 },
             }),
         )
+        // The per-door state comes from 10A8 events (sent only on change), so seed
+        // both closed until the appliance reports otherwise.
+        this.publishProperty('door', 'OFF')
+        this.publishProperty('freezer_door', 'OFF')
     }
 
     start() {
@@ -92,12 +103,19 @@ export default class Device extends AABBDevice {
             // 10EB = initial status
             this.processStatus(buf.subarray(2, 2 + STATUS_LENGTH))
         }
+        if (buf.length === 4 && buf[0] == 0x10 && buf[1] == 0xa8) {
+            // 10A8 <doorId> <state> — per-door open/close event (id 1=fridge, 2=freezer)
+            const state = buf[3] === 1 ? 'ON' : 'OFF'
+            if (buf[2] === 1) this.publishProperty('door', state)
+            else if (buf[2] === 2) this.publishProperty('freezer_door', state)
+        }
     }
 
     processStatus(curStatus: Buffer) {
         const s = unpackStatus(curStatus)
         this.setTemperatureUnit(s.tempUnit ? 'C' : 'F')
-        this.publishProperty('door', s.anyDoorOpen === 1 ? 'ON' : 'OFF')
+        // NOTE: status[7] is an aggregate "any door open" flag, not per-door — the
+        // per-door sensors are driven by the 10A8 events in processAABB instead.
         this.publishProperty('fridge_setpoint', convertFridgeTemperature(this.temperatureUnit!, s.fridgeSetpoint))
         this.publishProperty('freezer_setpoint', convertFreezerTemperature(this.temperatureUnit!, s.freezerSetpoint))
         this.publishProperty('express_freeze', s.expressFreeze === 2 ? 'ON' : 'OFF')

@@ -15,6 +15,11 @@ const META: Metadata = { modelId: MODEL_ID, modelName: '2REF11EIIDAS2', swVersio
 const INITIAL_10EB = buf('AA1810EB0208060102020400000000FFFFFF00FFFF0187BB')
 const STATUS_FRIDGE_36F = buf('AA2A10EC0208060102020400000000FFFFFF00FFFF010208060102020400000000FFFFFF00FFFF00ACBB')
 const STATUS_FRIDGE_34F = buf('AA2A10EC0208060102020400000000FFFFFF00FFFF00020A060102020400000000FFFFFF00FFFF00AFBB')
+// Real 10A8 per-door events: 10A8 <doorId 1=fridge/2=freezer> <1=open/0=closed>
+const FRIDGE_DOOR_OPEN = buf('AA0810A8010139BB')
+const FRIDGE_DOOR_CLOSE = buf('AA0810A801003EBB')
+const FREEZER_DOOR_OPEN = buf('AA0810A8020138BB')
+const FREEZER_DOOR_CLOSE = buf('AA0810A8020039BB')
 
 function makeDevice() {
     const ha = new MockHAConnection()
@@ -39,8 +44,30 @@ describe(MODEL_ID, () => {
         assert.equal(components.fridge_setpoint.unit_of_measurement, '°F')
         assert.equal(dev.properties.fridge_setpoint, 36) // 44 - 0x08
         assert.equal(dev.properties.freezer_setpoint, 0) // 6 - 0x06
-        assert.equal(dev.properties.door, 'OFF') // status[7] = 0
+        assert.equal(dev.properties.door, 'OFF') // seeded closed
+        assert.equal(dev.properties.freezer_door, 'OFF') // seeded closed
         assert.equal(dev.properties.express_freeze, 'OFF') // status[3] = 1
+    })
+
+    test('10A8 per-door events drive fridge + freezer door sensors independently', () => {
+        const { ha, thinq } = makeDevice()
+        thinq.emit('data', INITIAL_10EB) // publishes config + seeds both doors OFF
+        const p = () => ha.devices[DEVICE_ID].properties
+
+        thinq.emit('data', FRIDGE_DOOR_OPEN)
+        assert.equal(p().door, 'ON')
+        assert.equal(p().freezer_door, 'OFF')
+
+        thinq.emit('data', FREEZER_DOOR_OPEN)
+        assert.equal(p().door, 'ON')
+        assert.equal(p().freezer_door, 'ON')
+
+        thinq.emit('data', FRIDGE_DOOR_CLOSE)
+        assert.equal(p().door, 'OFF')
+        assert.equal(p().freezer_door, 'ON')
+
+        thinq.emit('data', FREEZER_DOOR_CLOSE)
+        assert.equal(p().freezer_door, 'OFF')
     })
 
     test('10EC current block decodes fridge setpoint 34F', () => {
