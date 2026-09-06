@@ -80,6 +80,18 @@ export default class Device extends AABBDevice {
                         state_topic: '$this/freezer_door',
                         name: 'Freezer Door',
                     },
+                    water_filter: {
+                        platform: 'sensor',
+                        unique_id: '$deviceid-water_filter',
+                        state_topic: '$this/water_filter',
+                        name: 'Water Filter Status (raw)',
+                    },
+                    fresh_air_filter: {
+                        platform: 'sensor',
+                        unique_id: '$deviceid-fresh_air_filter',
+                        state_topic: '$this/fresh_air_filter',
+                        name: 'Fresh Air Filter Status (raw)',
+                    },
                 },
             }),
         )
@@ -119,6 +131,8 @@ export default class Device extends AABBDevice {
         this.publishProperty('fridge_setpoint', convertFridgeTemperature(this.temperatureUnit!, s.fridgeSetpoint))
         this.publishProperty('freezer_setpoint', convertFreezerTemperature(this.temperatureUnit!, s.freezerSetpoint))
         this.publishProperty('express_freeze', s.expressFreeze === 2 ? 'ON' : 'OFF')
+        this.publishProperty('water_filter', s.waterFilter)
+        this.publishProperty('fresh_air_filter', s.freshAirFilter)
     }
 
     sendSetting(setting: Partial<Status>) {
