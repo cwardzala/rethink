@@ -84,7 +84,14 @@ export default class Device extends AABBDevice {
                         platform: 'sensor',
                         unique_id: '$deviceid-water_filter',
                         state_topic: '$this/water_filter',
-                        name: 'Water Filter Status (raw)',
+                        name: 'Water Filter Months Used',
+                    },
+                    water_filter_due: {
+                        platform: 'binary_sensor',
+                        device_class: 'problem',
+                        unique_id: '$deviceid-water_filter_due',
+                        state_topic: '$this/water_filter_due',
+                        name: 'Water Filter Replace',
                     },
                     fresh_air_filter: {
                         platform: 'sensor',
@@ -132,6 +139,7 @@ export default class Device extends AABBDevice {
         this.publishProperty('freezer_setpoint', convertFreezerTemperature(this.temperatureUnit!, s.freezerSetpoint))
         this.publishProperty('express_freeze', s.expressFreeze === 2 ? 'ON' : 'OFF')
         this.publishProperty('water_filter', s.waterFilter)
+        this.publishProperty('water_filter_due', s.waterFilter >= 6 ? 'ON' : 'OFF')
         this.publishProperty('fresh_air_filter', s.freshAirFilter)
     }
 
